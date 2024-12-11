@@ -1,0 +1,20 @@
+# .air.toml example configuration
+
+# Basic Config
+root = "."
+tmp_dir = "tmp"
+
+# Build and run config
+build.cmd = "go build -o ./tmp/main ."
+build.bin = "tmp/main"
+build.delay = "100ms"
+
+# Watch directories and file patterns
+[watcher]
+directories = ["."]
+ignore = ["tmp", "vendor", ".git"]
+extensions = ["go", "html", "css", "js", "yaml", "json"]
+
+# Logger
+[log]
+level = "debug"

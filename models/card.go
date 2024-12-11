@@ -6,27 +6,26 @@ import (
 
 // Card model
 type Card struct {
-	ID             uint      `gorm:"primaryKey"`
-	UserID         uint      `gorm:"not null"`
-	Title          string    `gorm:"not null"`
-	Description    string    `gorm:"type:text"`
-	Category       string    `gorm:"not null"`
-	EventType      string    `gorm:"not null"`
-	Price          float64   `gorm:"type:decimal(10,2);default:0"`
-	EventDate      time.Time `gorm:"not null"`
-	EventTime      time.Time `gorm:"not null"`
-	Participants   int       `gorm:"default:0"`
-	VideoURL       string    `gorm:"type:text"`
-	AvailableTimes []string  `gorm:"type:text[]"` // Array of strings
-	CreatedAt      time.Time `gorm:"autoCreateTime"`
-	UpdatedAt      time.Time `gorm:"autoUpdateTime"`
+	ID           uint      `gorm:"primaryKey"`
+	UserID       string    `gorm:"not null"`
+	Title        string    `gorm:"not null"`
+	Description  string    `gorm:"type:text"`
+	Category     string    `gorm:"not null"`
+	EventType    string    `gorm:"not null"`
+	Price        float64   `gorm:"type:decimal(10,2);default:0"`
+	EventDate    time.Time `gorm:"not null"`
+	EventTime    time.Time `gorm:"not null"`
+	Participants int       `gorm:"default:0"`
+	VideoURL     string    `gorm:"type:text"`
+	CreatedAt    time.Time `gorm:"autoCreateTime"`
+	UpdatedAt    time.Time `gorm:"autoUpdateTime"`
 }
 
 // Booking model for event bookings
 type Booking struct {
 	ID        uint      `gorm:"primaryKey;autoIncrement" json:"id"`
-	EventID   uint      `gorm:"not null" json:"event_id"`         // Refers to Card ID
-	UserID    uint      `gorm:"not null" json:"user_id"`          // ID of the Card creator
+	EventID   string    `gorm:"not null" json:"event_id"`         // Refers to Card ID
+	UserID    string    `gorm:"not null" json:"user_id"`          // ID of the Card creator
 	BookedBy  uint      `gorm:"not null" json:"booked_by"`        // ID of the user making the booking
 	Title     string    `gorm:"not null" json:"title"`            // Title of the event
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"` // Booking creation time

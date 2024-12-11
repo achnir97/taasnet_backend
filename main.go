@@ -17,10 +17,9 @@ func main() {
 	router := routes.SetupRoutes()
 
 	// Step 3: Start the server
-	port := ":8085" // Change the port as needed
-	fmt.Printf("Server is running on http://localhost%s\n", port)
-
+	port := ":8086" // Change the port as needed
 	if err := http.ListenAndServe(port, router); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
+	fmt.Printf("Server is running on http://localhost%s\n", port)
 }
