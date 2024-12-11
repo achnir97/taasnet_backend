@@ -156,6 +156,22 @@ func GetUserCards(c *gin.Context) {
 	})
 }
 
+// GetUserCards handles fetching all cards created by talents
+func GetAllCards(c *gin.Context) {
+	// Fetch all cards from the database without filtering by UserID
+	var cards []models.Card
+	if err := config.DB.Find(&cards).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch cards"})
+		return
+	}
+
+	// Return the list of all cards
+	c.JSON(http.StatusOK, gin.H{
+		"message": "All cards fetched successfully",
+		"cards":   cards,
+	})
+}
+
 // / Cards_Id handles fetching all cards for a specific user and optional card ID
 func Cards_Id(c *gin.Context) {
 	// 1. Extract user_id and id from query parameters
@@ -193,7 +209,7 @@ func Cards_Id(c *gin.Context) {
 }
 
 // BookEvent handles creating a new booking
-func BookEvent(c *gin.Context) {
+func BookCard(c *gin.Context) {
 	var input models.Booking
 	// 1. Parse the input JSON
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -210,10 +226,12 @@ func BookEvent(c *gin.Context) {
 
 	// 3. Create a new Booking
 	booking := models.Booking{
+		ID:       input.ID,
 		EventID:  input.EventID,
 		UserID:   card.UserID, // Card creator's user ID
 		BookedBy: input.BookedBy,
 		Title:    card.Title,
+		Status:   input.Status,
 	}
 
 	// 4. Save the booking to the database
@@ -345,5 +363,30 @@ func UpdateVideoControl(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message":       "Video control updated successfully",
 		"video_control": existingVideoControl,
+	})
+}
+
+// RetrieveMyBookedCards handles fetching all booked cards for a specific user
+func RetrieveMyBookedCards(c *gin.Context) {
+	// 1. Extract 'booked_by' from query parameters
+	bookedBy := c.Query("booked_by")
+
+	// Validate the input
+	if bookedBy == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID (booked_by) is required"})
+		return
+	}
+
+	// 2. Query the database to fetch bookings for the given 'booked_by' ID
+	var bookings []models.Booking
+	if err := config.DB.Where("booked_by = ?", bookedBy).Find(&bookings).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch bookings"})
+		return
+	}
+
+	// 3. Return success response with the list of bookings
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Bookings retrieved successfully",
+		"bookings": bookings,
 	})
 }

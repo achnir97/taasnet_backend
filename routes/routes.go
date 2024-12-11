@@ -29,9 +29,11 @@ func SetupRoutes() *gin.Engine {
 	router.POST("/api/cards", handlers.SaveCard)
 	//Booking routes
 
-	router.POST("/api/bookings", handlers.BookEvent)
+	router.POST("/api/bookings", handlers.BookCard)
+	router.GET("/api/mybookings", handlers.RetrieveMyBookedCards)
 	//Video Control routes
 	router.GET("/api/cards/user", handlers.GetUserCards)
+	router.GET("/api/cards/all", handlers.GetAllCards)
 	router.GET("/api/cards/event-id", handlers.Cards_Id)
 
 	router.POST("/api/save-video-control", handlers.SaveVideoControl)
