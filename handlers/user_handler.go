@@ -7,12 +7,14 @@ import (
 	"taas-api/models"
 
 	"github.com/gin-gonic/gin"
+
 	"golang.org/x/crypto/bcrypt"
 	"storj.io/common/uuid"
 )
 
 // Signup Handler
 func Signup(c *gin.Context) {
+
 	var input struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
@@ -38,7 +40,7 @@ func Signup(c *gin.Context) {
 		return
 	}
 
-	// Generate a unique user ID using UUID
+	//Generate a unique user ID using UUID
 	uniqueUserID, err := uuid.New()
 	if err != nil {
 		fmt.Println("Error generating UUID:", err)
@@ -217,20 +219,20 @@ func BookCard(c *gin.Context) {
 		return
 	}
 
-	// 2. Find the Card (Event) by Event ID
-	var card models.Card
-	if err := config.DB.First(&card, input.EventID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Event not found"})
+	// Generate a unique user ID using UUID
+	booking_id, err := uuid.New()
+	if err != nil {
+		fmt.Println("Error generating UUID:", err)
 		return
 	}
 
 	// 3. Create a new Booking
 	booking := models.Booking{
-		ID:       input.ID,
+		ID:       booking_id.String(),
 		EventID:  input.EventID,
-		UserID:   card.UserID, // Card creator's user ID
+		UserID:   input.UserID, // Card creator's user ID
 		BookedBy: input.BookedBy,
-		Title:    card.Title,
+		Title:    input.Title,
 		Status:   input.Status,
 	}
 
@@ -385,6 +387,98 @@ func RetrieveMyBookedCards(c *gin.Context) {
 	}
 
 	// 3. Return success response with the list of bookings
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Bookings retrieved successfully",
+		"bookings": bookings,
+	})
+}
+
+// RetrieveMyBookedCards handles fetching all booked cards for a specific user
+func RetrieveMyBookedCardsRequestToTalent(c *gin.Context) {
+	// 1. Extract 'booked_by' from query parameters
+	talentId := c.Query("userId")
+
+	// Validate the input
+	if talentId == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID (card creator) is required"})
+		return
+	}
+
+	// 2. Query the database to fetch bookings for the given 'booked_by' ID
+	var bookings []models.Booking
+	if err := config.DB.Where("user_id = ?", talentId).Find(&bookings).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch bookings"})
+		return
+	}
+
+	// 3. Return success response with the list of bookings
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Bookings retrieved successfully",
+		"bookings": bookings,
+	})
+}
+
+// HandleBookingRequest handles fetching all booked cards for a specific user and updates booking status
+func HandleBookingRequest(c *gin.Context) {
+	// 1. Extract 'userId' from query parameters
+	talentId := c.Query("userId")
+
+	if talentId == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID (user_id) is required"})
+		return
+	}
+
+	// 2. Check if request contains a status update payload
+	type StatusUpdateInput struct {
+		BookingID string `json:"booking_id"` // ID of the booking
+		Status    string `json:"status"`     // New status (e.g., "Accepted", "Declined")
+	}
+
+	var input StatusUpdateInput
+
+	if err := c.ShouldBindJSON(&input); err == nil {
+		// If JSON is provided, update the status of the specified booking
+		if input.BookingID == "" || input.Status == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Booking ID and Status are required"})
+			return
+		}
+
+		// Validate the status
+		if input.Status != "Accepted" && input.Status != "Declined" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status. Allowed values are 'Accepted' or 'Declined'"})
+			return
+		}
+
+		// Find the booking by ID and update its status
+		var booking models.Booking
+		if err := config.DB.First(&booking, "id = ?", input.BookingID).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Booking not found"})
+			return
+		}
+
+		// Update the status
+		booking.Status = input.Status
+		if err := config.DB.Save(&booking).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update booking status"})
+			return
+		}
+
+		// Return success response
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Booking status updated successfully",
+			"booking": booking,
+		})
+		return
+	}
+
+	// 3. If no JSON payload, fetch all bookings for the user
+	var bookings []models.Booking
+	if err := config.DB.Where("user_id = ?", talentId).Find(&bookings).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch bookings"})
+		return
+	}
+
+	// 4. Return the list of bookings
 	c.JSON(http.StatusOK, gin.H{
 		"message":  "Bookings retrieved successfully",
 		"bookings": bookings,

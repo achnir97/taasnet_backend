@@ -22,7 +22,7 @@ type Card struct {
 }
 
 type Booking struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`      // Use string for UUID
+	ID        string    `json:"id" gorm:"primaryKey"`      // Use string for UUID
 	EventID   string    `gorm:"not null" json:"event_id"`  // Event ID (string)
 	UserID    string    `gorm:"not null" json:"user_id"`   // User ID (string)
 	BookedBy  string    `gorm:"not null" json:"booked_by"` // BookedBy ID (string)

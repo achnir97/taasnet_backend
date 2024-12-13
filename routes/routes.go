@@ -39,6 +39,8 @@ func SetupRoutes() *gin.Engine {
 	router.POST("/api/save-video-control", handlers.SaveVideoControl)
 	router.GET("/api/get-video-control", handlers.GetVideoControl)
 	router.POST("/api/update-video-control", handlers.UpdateVideoControl)
+	router.GET("/api/bookingRequest", handlers.RetrieveMyBookedCardsRequestToTalent)
+	router.POST("/api/handle-bookingRequest", handlers.HandleBookingRequest)
 
 	return router
 
