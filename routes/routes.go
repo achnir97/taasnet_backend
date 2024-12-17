@@ -21,27 +21,28 @@ func SetupRoutes() *gin.Engine {
 		MaxAge:           12 * time.Hour, // Cache preflight requests for 12 hours
 	}))
 
-	// User routes
+	// Authentication User routes
 	router.POST("/api/signup", handlers.Signup)
 	router.POST("/api/login", handlers.Login)
+
 	// Card routes
-
 	router.POST("/api/cards", handlers.SaveCard)
-	//Booking routes
-
-	router.POST("/api/bookings", handlers.BookCard)
-	router.GET("/api/mybookings", handlers.RetrieveMyBookedCards)
-	//Video Control routes
 	router.GET("/api/cards/user", handlers.GetUserCards)
 	router.GET("/api/cards/all", handlers.GetAllCards)
 	router.GET("/api/cards/event-id", handlers.Cards_Id)
 
+	//Booking routes
+	router.POST("/api/bookings", handlers.BookCard)
+	router.GET("/api/mybookings", handlers.RetrieveMyBookedCards)
+
+	//Video Control routes
 	router.POST("/api/save-video-control", handlers.SaveVideoControl)
 	router.GET("/api/get-video-control", handlers.GetVideoControl)
 	router.POST("/api/update-video-control", handlers.UpdateVideoControl)
 	router.GET("/api/bookingRequest", handlers.RetrieveMyBookedCardsRequestToTalent)
 	router.PATCH("/api/handle-bookingStatus", handlers.HandleUpdateBookingStatus)
 	router.GET("/api/notifications", handlers.HandleNotificationStream)
+	router.POST("api/upload", handlers.FileUploadHandler)
 
 	return router
 

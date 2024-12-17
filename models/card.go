@@ -154,3 +154,17 @@ type VideoControl struct {
 	CreatedAt  time.Time `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt  time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }
+
+// AvailableTimeSlot represents the available time slots for a user.
+type AvailableTimeSlots struct {
+	ID          uint           `gorm:"primaryKey;autoIncrement" json:"id"`
+	UserID      uint           `gorm:"not null" json:"user_id"` // FK: Links to the User table
+	DayOfWeek   string         `gorm:"type:varchar(20);not null" json:"day_of_week"`
+	StartTime   time.Time      `gorm:"not null" json:"start_time"`
+	EndTime     time.Time      `gorm:"not null" json:"end_time"`
+	IsRecurring bool           `gorm:"default:false" json:"is_recurring"` // Is it a weekly recurring slot?
+	CustomDate  *time.Time     `json:"custom_date"`                       // Optional for single-day slots
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at"` // Soft delete for slots
+}

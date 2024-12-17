@@ -8,8 +8,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"time"
-
 	"golang.org/x/crypto/bcrypt"
 	"storj.io/common/uuid"
 )
@@ -28,14 +26,14 @@ func Signup(c *gin.Context) {
 		return
 	}
 
-	// Check if email already exists
+	//Check if email already exists
 	var existingUser models.User
 	if err := config.DB.Where("email = ?", input.Email).First(&existingUser).Error; err == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Email already exists"})
 		return
 	}
 
-	// Hash the password
+	//Hash the password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
@@ -251,125 +249,6 @@ func BookCard(c *gin.Context) {
 	})
 }
 
-func SaveVideoControl(c *gin.Context) {
-	var input models.VideoControl
-	var existingVideoControl models.VideoControl
-
-	// Parse the input JSON
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Check if a record already exists
-	if err := config.DB.First(&existingVideoControl).Error; err == nil {
-		// Update the existing record with the new data
-		existingVideoControl.VideoURL = input.VideoURL
-		existingVideoControl.Action = input.Action
-		existingVideoControl.StartTime = input.StartTime
-		existingVideoControl.EndTime = input.EndTime
-		existingVideoControl.PausedTime = input.PausedTime
-
-		// Save the updated record
-		if err := config.DB.Save(&existingVideoControl).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update video control"})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"message":       "Video control updated successfully",
-			"video_control": existingVideoControl,
-		})
-		return
-	}
-
-	// If no record exists, create a new one
-	newVideoControl := models.VideoControl{
-		VideoURL:   input.VideoURL,
-		Action:     input.Action,
-		StartTime:  input.StartTime,
-		EndTime:    input.EndTime,
-		PausedTime: input.PausedTime,
-	}
-
-	if err := config.DB.Create(&newVideoControl).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save video control"})
-		return
-	}
-
-	// Return success response
-	c.JSON(http.StatusOK, gin.H{
-		"message":       "New video control created successfully",
-		"video_control": newVideoControl,
-	})
-}
-
-// GetVideoControl handles fetching the single video control record
-func GetVideoControl(c *gin.Context) {
-	// Create an instance to store the video control data
-	var videoControl models.VideoControl
-
-	// Fetch the first video control record from the database
-	if err := config.DB.First(&videoControl).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch video control"})
-		return
-	}
-
-	// Return success response with video control data
-	c.JSON(http.StatusOK, gin.H{
-		"message":       "Video control fetched successfully",
-		"video_control": videoControl,
-	})
-}
-
-func UpdateVideoControl(c *gin.Context) {
-	var input models.VideoControl
-	var existingVideoControl models.VideoControl
-
-	// Parse the input JSON
-	// Parse the input JSON
-	if err := c.ShouldBindJSON(&input); err != nil {
-		fmt.Println("Error binding JSON:", err) // Log the error
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	fmt.Println("Received JSON payload:", input) // Debugging: Log received data
-
-	// Check if a record exists
-	if err := config.DB.First(&existingVideoControl).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "No existing video control record found"})
-		return
-	}
-
-	// Update only the fields provided
-	if input.VideoURL != "" {
-		existingVideoControl.VideoURL = input.VideoURL
-	}
-	if input.StartTime > 0 {
-		existingVideoControl.StartTime = input.StartTime
-	}
-	if input.EndTime > 0 {
-		existingVideoControl.EndTime = input.EndTime
-	}
-	if input.PausedTime >= 0 {
-		existingVideoControl.PausedTime = input.PausedTime
-	}
-	if input.Action != "" {
-		existingVideoControl.Action = input.Action
-	}
-
-	// Save the updated record
-	if err := config.DB.Save(&existingVideoControl).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update video control"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message":       "Video control updated successfully",
-		"video_control": existingVideoControl,
-	})
-}
-
 // RetrieveMyBookedCards handles fetching all booked cards for a specific user
 func RetrieveMyBookedCards(c *gin.Context) {
 	// 1. Extract 'booked_by' from query parameters
@@ -474,42 +353,4 @@ func HandleUpdateBookingStatus(c *gin.Context) {
 		"message": "Booking status updated successfully",
 		"booking": booking,
 	})
-}
-
-func HandleNotificationStream(c *gin.Context) {
-	// Set SSE headers
-	c.Writer.Header().Set("Content-Type", "text/event-stream")
-	c.Writer.Header().Set("Cache-Control", "no-cache")
-	c.Writer.Header().Set("Connection", "keep-alive")
-
-	// Extract user ID from query
-	userId := c.Query("user_id")
-	if userId == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
-		return
-	}
-
-	// Infinite loop to simulate real-time updates
-	for {
-		var notifications []models.Booking
-
-		// Fetch all pending bookings for the user
-		if err := config.DB.Where("user_id = ? AND status = ?", userId, "Pending").Find(&notifications).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch notifications"})
-			return
-		}
-
-		// If there are pending notifications, send them to the client
-		if len(notifications) > 0 {
-			for _, booking := range notifications {
-				data := fmt.Sprintf(`{"id": "%s", "eventId": "%s", "message": "Booking '%s' is pending", "status": "%s", "bookedBy": "%s"}`,
-					booking.ID, booking.EventID, booking.Title, booking.Status, booking.BookedBy)
-				fmt.Fprintf(c.Writer, "data: %s\n\n", data)
-				c.Writer.Flush() // Push data to the client
-			}
-		}
-
-		// Wait for 5 seconds before checking again
-		time.Sleep(5 * time.Second)
-	}
 }
