@@ -14,7 +14,7 @@ func SetupRoutes() *gin.Engine {
 	// CORS middleware configuration
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"}, // Allow all origins, change to specific origins as needed
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,           // Allow cookies and credentials
@@ -40,7 +40,8 @@ func SetupRoutes() *gin.Engine {
 	router.GET("/api/get-video-control", handlers.GetVideoControl)
 	router.POST("/api/update-video-control", handlers.UpdateVideoControl)
 	router.GET("/api/bookingRequest", handlers.RetrieveMyBookedCardsRequestToTalent)
-	router.POST("/api/handle-bookingRequest", handlers.HandleBookingRequest)
+	router.PATCH("/api/handle-bookingStatus", handlers.HandleUpdateBookingStatus)
+	router.GET("/api/notifications", handlers.HandleNotificationStream)
 
 	return router
 

@@ -8,6 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"time"
+
 	"golang.org/x/crypto/bcrypt"
 	"storj.io/common/uuid"
 )
@@ -418,69 +420,96 @@ func RetrieveMyBookedCardsRequestToTalent(c *gin.Context) {
 	})
 }
 
-// HandleBookingRequest handles fetching all booked cards for a specific user and updates booking status
-func HandleBookingRequest(c *gin.Context) {
-	// 1. Extract 'userId' from query parameters
-	talentId := c.Query("userId")
+func HandleUpdateBookingStatus(c *gin.Context) {
+	// Extract booking ID and user ID from query parameters
+	bookingID := c.Query("bookingId")
+	userID := c.Query("user_id")
+	println(bookingID)
+	println(userID)
 
-	if talentId == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID (user_id) is required"})
+	// Validate the booking ID and user ID
+	if bookingID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Booking ID is required"})
+		return
+	}
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
 		return
 	}
 
-	// 2. Check if request contains a status update payload
+	// Input for status update
 	type StatusUpdateInput struct {
-		BookingID string `json:"booking_id"` // ID of the booking
-		Status    string `json:"status"`     // New status (e.g., "Accepted", "Declined")
+		Status string `json:"status" binding:"required"`
 	}
 
 	var input StatusUpdateInput
 
-	if err := c.ShouldBindJSON(&input); err == nil {
-		// If JSON is provided, update the status of the specified booking
-		if input.BookingID == "" || input.Status == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Booking ID and Status are required"})
-			return
-		}
-
-		// Validate the status
-		if input.Status != "Accepted" && input.Status != "Declined" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status. Allowed values are 'Accepted' or 'Declined'"})
-			return
-		}
-
-		// Find the booking by ID and update its status
-		var booking models.Booking
-		if err := config.DB.First(&booking, "id = ?", input.BookingID).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Booking not found"})
-			return
-		}
-
-		// Update the status
-		booking.Status = input.Status
-		if err := config.DB.Save(&booking).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update booking status"})
-			return
-		}
-
-		// Return success response
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Booking status updated successfully",
-			"booking": booking,
-		})
+	// Bind JSON payload
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: 'status' is required"})
 		return
 	}
 
-	// 3. If no JSON payload, fetch all bookings for the user
-	var bookings []models.Booking
-	if err := config.DB.Where("user_id = ?", talentId).Find(&bookings).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch bookings"})
+	// Validate status value
+	if input.Status != "Accepted" && input.Status != "Declined" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status. Allowed values are 'Accepted' or 'Declined'"})
 		return
 	}
 
-	// 4. Return the list of bookings
+	// Fetch and update the booking status
+	var booking models.Booking
+	if err := config.DB.First(&booking, "id = ?", bookingID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Booking not found"})
+		return
+	}
+
+	// Update the status
+	booking.Status = input.Status
+	if err := config.DB.Save(&booking).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update booking status"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"message":  "Bookings retrieved successfully",
-		"bookings": bookings,
+		"message": "Booking status updated successfully",
+		"booking": booking,
 	})
+}
+
+func HandleNotificationStream(c *gin.Context) {
+	// Set SSE headers
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+
+	// Extract user ID from query
+	userId := c.Query("user_id")
+	if userId == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
+		return
+	}
+
+	// Infinite loop to simulate real-time updates
+	for {
+		var notifications []models.Booking
+
+		// Fetch all pending bookings for the user
+		if err := config.DB.Where("user_id = ? AND status = ?", userId, "Pending").Find(&notifications).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch notifications"})
+			return
+		}
+
+		// If there are pending notifications, send them to the client
+		if len(notifications) > 0 {
+			for _, booking := range notifications {
+				data := fmt.Sprintf(`{"id": "%s", "eventId": "%s", "message": "Booking '%s' is pending", "status": "%s", "bookedBy": "%s"}`,
+					booking.ID, booking.EventID, booking.Title, booking.Status, booking.BookedBy)
+				fmt.Fprintf(c.Writer, "data: %s\n\n", data)
+				c.Writer.Flush() // Push data to the client
+			}
+		}
+
+		// Wait for 5 seconds before checking again
+		time.Sleep(5 * time.Second)
+	}
 }
