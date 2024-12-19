@@ -25,24 +25,37 @@ func SetupRoutes() *gin.Engine {
 	router.POST("/api/signup", handlers.Signup)
 	router.POST("/api/login", handlers.Login)
 
+	router.POST("/api/register", handlers.RegisterUser)
+	router.POST("/api/signin", handlers.SignIn)
 	// Card routes
 	router.POST("/api/cards", handlers.SaveCard)
 	router.GET("/api/cards/user", handlers.GetUserCards)
 	router.GET("/api/cards/all", handlers.GetAllCards)
 	router.GET("/api/cards/event-id", handlers.Cards_Id)
 
-	//Booking routes
-	router.POST("/api/bookings", handlers.BookCard)
-	router.GET("/api/mybookings", handlers.RetrieveMyBookedCards)
-
 	//Video Control routes
 	router.POST("/api/save-video-control", handlers.SaveVideoControl)
 	router.GET("/api/get-video-control", handlers.GetVideoControl)
 	router.POST("/api/update-video-control", handlers.UpdateVideoControl)
+
+	//Booking routes
+	router.POST("/api/bookings", handlers.BookCard)
+	router.GET("/api/mybookings", handlers.RetrieveMyBookedCards)
+
 	router.GET("/api/bookingRequest", handlers.RetrieveMyBookedCardsRequestToTalent)
 	router.PATCH("/api/handle-bookingStatus", handlers.HandleUpdateBookingStatus)
+
+	//Notification route
 	router.GET("/api/notifications", handlers.HandleNotificationStream)
-	router.POST("api/upload", handlers.FileUploadHandler)
+
+	//Static files route
+	router.POST("/api/upload", handlers.FileUploadHandler)
+
+	//Schedule management routes
+	router.POST("/api/create-schedule", handlers.CreateAvailableSlots)
+	router.PATCH("/api/update-schedule", handlers.UpdateAvailableSlots)
+	router.GET("/api/get-all-schedule", handlers.GetAvailableSlots)
+	router.DELETE("/api/delete-schedule", handlers.DeleteAvailableSlot)
 
 	return router
 

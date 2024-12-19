@@ -7,14 +7,24 @@ import (
 	"taas-api/models"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
+	"time"
+
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/go-playground/validator/v10"
 	"golang.org/x/crypto/bcrypt"
 	"storj.io/common/uuid"
 )
 
+// Initialize the validator globally
+var validate *validator.Validate = validator.New()
+
 // Signup Handler
 func Signup(c *gin.Context) {
-
 	var input struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
@@ -97,260 +107,185 @@ func Login(c *gin.Context) {
 	})
 }
 
-// / SaveCard handles the saving of card details
-func SaveCard(c *gin.Context) {
-	var input models.Card
-	// 1. Parse and validate the incoming JSON payload
+// RegisterUser handles user registration requests.
+func RegisterUser(c *gin.Context) {
+
+	var input struct { // Primary Key
+		FirstName   string         `gorm:"size:100;not null" json:"first_name"`                 // User's first name
+		LastName    string         `gorm:"size:100;not null" json:"last_name"`                  // User's last name
+		Phone       string         `gorm:"size:20;unique;not null" json:"phone"`                // User's phone number
+		Email       string         `gorm:"size:100;unique;not null" json:"email"`               // User's email address
+		Password    string         `gorm:"size:255;not null" json:"password"`                   // Hashed password
+		AccountType string         `gorm:"size:50;not null;default:'User'" json:"account_type"` // Enum: "User" or "Talent"
+		CreatedAt   time.Time      `gorm:"autoCreateTime" json:"created_at"`                    // User creation timestamp
+		UpdatedAt   time.Time      `gorm:"autoUpdateTime" json:"updated_at"`                    // User profile last updated timestamp
+		DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`                   // Soft delete
+	}
+
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// 2. Parse EventDate and EventTime
-
-	// 3. Create a new Card instance
-	card := models.Card{
-		UserID:       input.UserID,
-		Title:        input.Title,
-		Description:  input.Description,
-		Category:     input.Category,
-		EventType:    input.EventType,
-		Price:        input.Price,
-		EventDate:    input.EventDate, // Already a time.Time value
-		EventTime:    input.EventTime, // Already a time.Time value
-		Participants: input.Participants,
-		VideoURL:     input.VideoURL,
-	}
-
-	// 4. Save the card to the database
-	if err := config.DB.Create(&card).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save card"})
+	//Check if email already exists
+	var existingUser models.Users_ref
+	if err := config.DB.Where("email = ?", input.Email).First(&existingUser).Error; err == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Email already exists"})
 		return
 	}
-	// 5. Return success response
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Card saved successfully",
-		"card":    card,
-	})
-}
-
-// GetUserCards handles fetching all cards for a specific user
-func GetUserCards(c *gin.Context) {
-	// 1. Extract UserID from query parameters
-	userID := c.Query("user_id") // Assumes the user ID is sent as a query parameter
-
-	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
+	// Hash the password before saving
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
 		return
 	}
+	input.Password = string(hashedPassword)
 
-	// 2. Fetch all cards for the given UserID
-	var cards []models.Card
-	if err := config.DB.Where("user_id = ?", userID).Find(&cards).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch cards"})
-		return
-	}
-
-	// 3. Return the list of cards
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Cards fetched successfully",
-		"cards":   cards,
-	})
-}
-
-// GetUserCards handles fetching all cards created by talents
-func GetAllCards(c *gin.Context) {
-	// Fetch all cards from the database without filtering by UserID
-	var cards []models.Card
-	if err := config.DB.Find(&cards).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch cards"})
-		return
-	}
-
-	// Return the list of all cards
-	c.JSON(http.StatusOK, gin.H{
-		"message": "All cards fetched successfully",
-		"cards":   cards,
-	})
-}
-
-// / Cards_Id handles fetching all cards for a specific user and optional card ID
-func Cards_Id(c *gin.Context) {
-	// 1. Extract user_id and id from query parameters
-	userID := c.Query("user_id") //Assumes the user ID is sent as a query parameter
-	cardID := c.Query("id")      //Optional: Assumes the card ID is sent as an additional parameter
-
-	// 2. Validate user_id
-	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
-		return
-	}
-
-	// 3. Build the query dynamically
-	var cards []models.Card
-	query := config.DB.Where("user_id = ?", userID)
-
-	// If cardID is provided, add it to the query
-	if cardID != "" {
-		query = query.Where("id = ?", cardID)
-	}
-	// 4. Execute the query
-	if err := query.Find(&cards).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch cards"})
-		return
-	}
-	// 5. Return the result
-	if len(cards) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"message": "No cards found matching the criteria"})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Cards fetched successfully",
-		"cards":   cards,
-	})
-}
-
-// BookEvent handles creating a new booking
-func BookCard(c *gin.Context) {
-	var input models.Booking
-	// 1. Parse the input JSON
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Generate a unique user ID using UUID
-	booking_id, err := uuid.New()
+	//Generate a unique user ID using UUID
+	uniqueUserID, err := uuid.New()
 	if err != nil {
 		fmt.Println("Error generating UUID:", err)
 		return
 	}
-
-	// 3. Create a new Booking
-	booking := models.Booking{
-		ID:       booking_id.String(),
-		EventID:  input.EventID,
-		UserID:   input.UserID, // Card creator's user ID
-		BookedBy: input.BookedBy,
-		Title:    input.Title,
-		Status:   input.Status,
+	// Create the user
+	user := models.Users_ref{
+		UserID:      uniqueUserID.String(), // Convert to UUI
+		FirstName:   input.FirstName,
+		LastName:    input.LastName,
+		Phone:       input.Phone,
+		AccountType: input.AccountType,
+		Email:       input.Email,
+		Password:    string(hashedPassword),
+		CreatedAt:   input.CreatedAt,
+		UpdatedAt:   input.UpdatedAt,
+		DeletedAt:   input.DeletedAt,
 	}
 
-	// 4. Save the booking to the database
-	if err := config.DB.Create(&booking).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create booking"})
+	// Save to database
+	if err := config.DB.Create(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
 		return
 	}
 
-	// 5. Return success response
+	// Return success response with user ID
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Event booked successfully",
-		"booking": booking,
+		"message": "User registered successfully",
+		"userId":  uniqueUserID,
 	})
 }
 
-// RetrieveMyBookedCards handles fetching all booked cards for a specific user
-func RetrieveMyBookedCards(c *gin.Context) {
-	// 1. Extract 'booked_by' from query parameters
-	bookedBy := c.Query("booked_by")
-
-	// Validate the input
-	if bookedBy == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID (booked_by) is required"})
-		return
+// Login Handler
+func SignIn(c *gin.Context) {
+	var input struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
-	// 2. Query the database to fetch bookings for the given 'booked_by' ID
-	var bookings []models.Booking
-	if err := config.DB.Where("booked_by = ?", bookedBy).Find(&bookings).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch bookings"})
-		return
-	}
-
-	// 3. Return success response with the list of bookings
-	c.JSON(http.StatusOK, gin.H{
-		"message":  "Bookings retrieved successfully",
-		"bookings": bookings,
-	})
-}
-
-// RetrieveMyBookedCards handles fetching all booked cards for a specific user
-func RetrieveMyBookedCardsRequestToTalent(c *gin.Context) {
-	// 1. Extract 'booked_by' from query parameters
-	talentId := c.Query("userId")
-
-	// Validate the input
-	if talentId == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID (card creator) is required"})
-		return
-	}
-
-	// 2. Query the database to fetch bookings for the given 'booked_by' ID
-	var bookings []models.Booking
-	if err := config.DB.Where("user_id = ?", talentId).Find(&bookings).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch bookings"})
-		return
-	}
-
-	// 3. Return success response with the list of bookings
-	c.JSON(http.StatusOK, gin.H{
-		"message":  "Bookings retrieved successfully",
-		"bookings": bookings,
-	})
-}
-
-func HandleUpdateBookingStatus(c *gin.Context) {
-	// Extract booking ID and user ID from query parameters
-	bookingID := c.Query("bookingId")
-	userID := c.Query("user_id")
-	println(bookingID)
-	println(userID)
-
-	// Validate the booking ID and user ID
-	if bookingID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Booking ID is required"})
-		return
-	}
-	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
-		return
-	}
-
-	// Input for status update
-	type StatusUpdateInput struct {
-		Status string `json:"status" binding:"required"`
-	}
-
-	var input StatusUpdateInput
-
-	// Bind JSON payload
+	// Validate request body
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: 'status' is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	// Validate status value
-	if input.Status != "Accepted" && input.Status != "Declined" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status. Allowed values are 'Accepted' or 'Declined'"})
+	// Fetch user by email
+	var user models.Users_ref
+	if err := config.DB.Where("email = ?", input.Email).First(&user).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
-
-	// Fetch and update the booking status
-	var booking models.Booking
-	if err := config.DB.First(&booking, "id = ?", bookingID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Booking not found"})
+	// Compare passwords
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
-
-	// Update the status
-	booking.Status = input.Status
-	if err := config.DB.Save(&booking).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update booking status"})
-		return
-	}
-
+	// Respond with user_id and success message
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Booking status updated successfully",
-		"booking": booking,
+		"message": "Login successful",
+		"userId":  user.UserID, // Include user ID in the response
 	})
+}
+
+// RegisterTalent handles the talent registration
+func RegisterTalent(c *gin.Context) {
+	// Parse incoming JSON data into a struct
+	var talent struct {
+		TalentName      string   `json:"talent_name" binding:"required"`
+		Category        string   `json:"category" binding:"required"`
+		Bio             string   `json:"bio" binding:"required"`
+		PortfolioURL    string   `json:"portfolio_url"`
+		Skills          []string `json:"skills" binding:"required"` // Array of skills from the request
+		ProfileImage    string   `json:"profile_image"`             // Base64 encoded or file path
+		ExperienceLevel string   `json:"experience_level" binding:"required"`
+	}
+
+	// Bind JSON data and validate
+	if err := c.ShouldBindJSON(&talent); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input data: " + err.Error()})
+		return
+	}
+
+	// Join skills into a single comma-separated string
+	skillsString := strings.Join(talent.Skills, ",")
+
+	// Handle profile image upload
+	imagePath, err := handleImageUpload(talent.ProfileImage)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save profile image"})
+		return
+	}
+
+	// Create TalentRegistration object for saving to DB
+	talentRecord := models.TalentRegistration{
+		TalentName:      talent.TalentName,
+		Category:        talent.Category,
+		Bio:             talent.Bio,
+		ExperienceLevel: talent.ExperienceLevel,
+		PortfolioLink:   talent.PortfolioURL,
+		Skills:          skillsString,
+		ProfileImageURL: imagePath,
+	}
+
+	// Save to database
+	if err := config.DB.Create(&talentRecord).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save talent data"})
+		return
+	}
+
+	// Success response
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Talent registered successfully!",
+		"skills":  skillsString,
+	})
+}
+
+// handleImageUpload saves the profile image to a folder and returns the file path
+func handleImageUpload(base64Image string) (string, error) {
+	// For now, let's save the image as a static file (you can implement base64 decoding if needed)
+	if base64Image == "" {
+		return "", nil
+	}
+
+	// Static folder for uploaded images
+	uploadDir := "uploads/"
+	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
+		os.Mkdir(uploadDir, os.ModePerm)
+	}
+
+	// Generate a unique filename
+	imageName := fmt.Sprintf("profile_%d.png", os.Getpid()) // Unique filename
+	imagePath := filepath.Join(uploadDir, imageName)
+
+	// Mock saving the image (for real base64 decoding, use a library)
+	file, err := os.Create(imagePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	// Write image data (placeholder, real implementation may differ)
+	_, err = file.WriteString("mock_image_data")
+	if err != nil {
+		return "", err
+	}
+
+	return imagePath, nil
 }

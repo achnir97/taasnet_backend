@@ -25,7 +25,6 @@ func FileUploadHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "File upload failed"})
 		return
 	}
-
 	// Generate a unique file name using timestamp
 	timestamp := time.Now().Unix()
 	fileName := fmt.Sprintf("%d_%s", timestamp, filepath.Base(file.Filename))

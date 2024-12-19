@@ -6,34 +6,19 @@ import (
 	"gorm.io/gorm"
 )
 
-// Talent represents the talent table in the database
-type Talent struct {
-	TalentID     uint           `gorm:"primaryKey;autoIncrement" json:"talent_id"` // Primary Key
-	UserID       uint           `gorm:"not null;uniqueIndex" json:"user_id"`       // Foreign Key: Links to User table
-	TalentName   string         `gorm:"size:255;not null" json:"talent_name"`      // Public-facing name
-	ProfileImage string         `gorm:"size:500" json:"profile_image"`             // Path or URL to the profile image
-	Bio          string         `gorm:"type:text" json:"bio"`                      // Short description or introduction
-	Categories   string         `gorm:"size:255" json:"categories"`                // List of categories (comma-separated)
-	Rating       float64        `gorm:"default:0.0" json:"rating"`                 // Aggregate rating
-	CreatedAt    time.Time      `gorm:"autoCreateTime" json:"created_at"`          // Profile creation timestamp
-	UpdatedAt    time.Time      `gorm:"autoUpdateTime" json:"updated_at"`          // Last profile update timestamp
-	DeletedAt    gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`         // Optional: Soft delete field
-}
-
-// User represents platform users (both talents and regular users)
-type Users struct {
-	UserID             uint           `gorm:"primaryKey;autoIncrement" json:"user_id"`     // Primary Key
-	Email              string         `gorm:"unique;not null" json:"email"`                // User's email address (unique)
-	Password           string         `gorm:"not null" json:"password"`                    // Encrypted password
-	Name               string         `gorm:"size:255;not null" json:"name"`               // User's display name
-	ProfileImage       string         `gorm:"size:255" json:"profile_image"`               // URL to profile image
-	AccountType        string         `gorm:"size:50;not null" json:"account_type"`        // Enum: "User," "Talent," "Admin"
-	Bio                *string        `gorm:"type:text" json:"bio,omitempty"`              // Optional short description
-	Location           *string        `gorm:"size:255" json:"location,omitempty"`          // User's city or country (optional)
-	ContactPreferences string         `gorm:"size:50;not null" json:"contact_preferences"` // Enum: "Email," "Notification," "Both"
-	CreatedAt          time.Time      `gorm:"autoCreateTime" json:"created_at"`            // Timestamp: User registration
-	UpdatedAt          time.Time      `gorm:"autoUpdateTime" json:"updated_at"`            // Timestamp: Last profile update
-	DeletedAt          gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`           // Soft delete (optional)
+// TalentRegistration represents the structure for talent registration data
+type TalentRegistration struct {
+	ID              uint           `gorm:"primaryKey;autoIncrement" json:"id"`       // Auto-increment Primary Key
+	TalentName      string         `gorm:"size:255;not null" json:"talent_name"`     // Name of the talent
+	Category        string         `gorm:"size:100;not null" json:"category"`        // Talent category
+	Bio             string         `gorm:"type:text;not null" json:"bio"`            // Short bio
+	Skills          string         `gorm:"type:text" json:"skills"`                  // Array of skills
+	PortfolioLink   string         `gorm:"size:255" json:"portfolio_link"`           // Portfolio URL
+	ProfileImageURL string         `gorm:"size:255" json:"profile_image_url"`        // Uploaded image URL
+	ExperienceLevel string         `gorm:"size:50;not null" json:"experience_level"` // Experience Level
+	CreatedAt       time.Time      `gorm:"autoCreateTime" json:"created_at"`         // Timestamp when created
+	UpdatedAt       time.Time      `gorm:"autoUpdateTime" json:"updated_at"`         // Timestamp when updated
+	DeletedAt       gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`        // Soft delete
 }
 
 // ServiceCard represents the individual service offerings by talents

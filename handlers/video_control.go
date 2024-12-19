@@ -85,7 +85,6 @@ func UpdateVideoControl(c *gin.Context) {
 	var existingVideoControl models.VideoControl
 
 	// Parse the input JSON
-	// Parse the input JSON
 	if err := c.ShouldBindJSON(&input); err != nil {
 		fmt.Println("Error binding JSON:", err) // Log the error
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
