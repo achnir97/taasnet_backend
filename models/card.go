@@ -1,14 +1,29 @@
 package models
 
 import (
+	"database/sql/driver"
+	"encoding/json"
 	"time"
 
 	"gorm.io/gorm"
 )
 
+type StringSlice []string
+
+// Implement Scan for reading from the database
+func (s *StringSlice) Scan(value interface{}) error {
+	return json.Unmarshal(value.([]byte), s)
+}
+
+// Implement Value for writing to the database
+func (s StringSlice) Value() (driver.Value, error) {
+	return json.Marshal(s)
+}
+
 // TalentRegistration represents the structure for talent registration data
 type TalentRegistration struct {
-	ID              uint           `gorm:"primaryKey;autoIncrement" json:"id"`       // Auto-increment Primary Key
+	UserID          string         `gorm:"not nul" json:"user_id"`                   // Primary Keyst
+	TalentID        string         `gorm:"not null" json:"talent_id"`                // Auto-increment Primary Key
 	TalentName      string         `gorm:"size:255;not null" json:"talent_name"`     // Name of the talent
 	Category        string         `gorm:"size:100;not null" json:"category"`        // Talent category
 	Bio             string         `gorm:"type:text;not null" json:"bio"`            // Short bio
@@ -23,31 +38,25 @@ type TalentRegistration struct {
 
 // ServiceCard represents the individual service offerings by talents
 type ServiceCard struct {
-	CardID                 uint           `gorm:"primaryKey;autoIncrement" json:"card_id"`             // Primary Key
-	TalentID               uint           `gorm:"not null;index" json:"talent_id"`                     // Foreign Key: Links to Talent table
-	CardTitle              string         `gorm:"size:255;not null" json:"card_title"`                 // Title of the service
-	CardDescription        string         `gorm:"type:text;not null" json:"card_description"`          // Detailed description
-	Suit                   string         `gorm:"size:50;not null" json:"suit"`                        // Enum: "Heart", "Spade", "Diamond", "Clover"
-	Price                  float64        `gorm:"not null" json:"price"`                               // Price for the service
-	Duration               int            `gorm:"not null" json:"duration"`                            // Duration in minutes
-	Tags                   string         `gorm:"size:255" json:"tags"`                                // Comma-separated tags
-	CoffeeCallEnabled      bool           `gorm:"default:false" json:"coffee_call_enabled"`            // Boolean for CoffeeCall availability
-	CoffeeCallPrice        float64        `json:"coffee_call_price"`                                   // Price for CoffeeCall
-	CoffeeCallDuration     int            `json:"coffee_call_duration"`                                // Duration of CoffeeCall in minutes
-	CoffeeCallAvailability string         `gorm:"size:50" json:"coffee_call_availability"`             // Enum: "Available Now", "Scheduled"
-	Rating                 float64        `gorm:"default:0.0" json:"rating"`                           // Aggregate rating
-	AvailabilityStatus     string         `gorm:"size:50;default:'Active'" json:"availability_status"` // Enum: "Active", "Paused"
-	CreatedAt              time.Time      `gorm:"autoCreateTime" json:"created_at"`                    // Timestamp for creation
-	UpdatedAt              time.Time      `gorm:"autoUpdateTime" json:"updated_at"`                    // Timestamp for update
-	DeletedAt              gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`                   // Soft delete field
+	CardID          string         `gorm:"not null;" json:"card_id"`                   // Primary Key
+	TalentID        string         `gorm:"not null;index" json:"talent_id"`            // Foreign Key: Links to Talent table
+	CardTitle       string         `gorm:"size:255;not null" json:"card_title"`        // Title of the service
+	CardDescription string         `gorm:"type:text;not null" json:"card_description"` // Detailed description
+	Suit            string         `gorm:"size:50;not null" json:"suit"`               // Enum: "Heart", "Spade", "Diamond", "Clover"
+	Price           int            `gorm:"not null" json:"price"`                      // Price for the service
+	Duration        int            `gorm:"not null" json:"duration"`                   // Duration in minutes
+	Tags            string         `gorm:"size:255" json:"tags"`                       // Comma-separated tags
+	CreatedAt       time.Time      `gorm:"autoCreateTime" json:"created_at"`           // Timestamp for creation
+	UpdatedAt       time.Time      `gorm:"autoUpdateTime" json:"updated_at"`           // Timestamp for update
+	DeletedAt       gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`          // Soft delete field
 }
 
 // Booking represents session bookings for CoffeeCalls and other services
 type Bookings struct {
-	BookingID       uint           `gorm:"primaryKey;autoIncrement" json:"booking_id"` // Primary Key
-	CardID          uint           `gorm:"not null;index" json:"card_id"`              // Foreign Key: Links to TaaS card
-	UserID          uint           `gorm:"not null;index" json:"user_id"`              // Foreign Key: Links to User table
-	TalentID        uint           `gorm:"not null;index" json:"talent_id"`            // Foreign Key: Links to Talent table
+	BookingID       string         `gorm:"primaryKey;autoIncrement" json:"booking_id"` // Primary Key
+	CardID          string         `gorm:"not null;index" json:"card_id"`              // Foreign Key: Links to TaaS card
+	UserID          string         `gorm:"not null;index" json:"user_id"`              // Foreign Key: Links to User table
+	TalentID        string         `gorm:"not null;index" json:"talent_id"`            // Foreign Key: Links to Talent table
 	SessionType     string         `gorm:"size:50;not null" json:"session_type"`       // Enum: "CoffeeCall", "Regular"
 	StartTime       time.Time      `gorm:"not null" json:"start_time"`                 // Start time of the session
 	EndTime         time.Time      `gorm:"not null" json:"end_time"`                   // End time of the session
@@ -140,16 +149,29 @@ type VideoControl struct {
 	UpdatedAt  time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }
 
-// AvailableTimeSlot represents the available time slots for a user.
 type AvailableTimeSlots struct {
-	ID          uint           `gorm:"primaryKey;autoIncrement" json:"id"`
-	UserID      uint           `gorm:"not null" json:"user_id"` // FK: Links to the User table
-	DayOfWeek   string         `gorm:"type:varchar(20);not null" json:"day_of_week"`
-	StartTime   time.Time      `gorm:"not null" json:"start_time"`
-	EndTime     time.Time      `gorm:"not null" json:"end_time"`
-	IsRecurring bool           `gorm:"default:false" json:"is_recurring"` // Is it a weekly recurring slot?
-	CustomDate  *time.Time     `json:"custom_date"`                       // Optional for single-day slots
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
-	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at"` // Soft delete for slots
+	ID             uint           `gorm:"primaryKey" json:"id"`
+	TalentID       string         `json:"talent_id" binding:"required"`
+	AvailableDate  time.Time      `json:"available_date" binding:"required"`
+	AvailableSlots string         `json:"available_slots" binding:"required"`
+	CreatedAt      time.Time      `json:"created_at"`
+	UpdatedAt      time.Time      `json:"updated_at"`
+	DeletedAt      gorm.DeletedAt `gorm:"index" json:"deleted_at"`
+}
+
+type BookingRequest struct {
+	BookingID       string         `json:"booking_id" binding:"required"`
+	CardID          string         `json:"card_id" binding:"required"`
+	CardTitle       string         `json:"card_title" binding:"required"`
+	UserID          string         `json:"user_id" binding:"required"`
+	TalentID        string         `json:"talent_id" binding:"required"`
+	SessionType     string         `json:"session_type" binding:"required"`   // Enum: CoffeeCall, Regular
+	StartTime       time.Time      `json:"start_time" binding:"required"`     // ISO8601 format
+	EndTime         time.Time      `json:"end_time" binding:"required"`       // ISO8601 format
+	Status          string         `json:"status" binding:"required"`         // Enum: Scheduled, Completed, Cancelled
+	PaymentStatus   string         `json:"payment_status" binding:"required"` // Enum: Paid, Pending
+	SpecialRequests string         `json:"special_requests"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
+	DeletedAt       gorm.DeletedAt `gorm:"index" json:"deleted_at"`
 }

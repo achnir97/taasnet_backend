@@ -156,9 +156,6 @@ func RegisterUser(c *gin.Context) {
 		AccountType: input.AccountType,
 		Email:       input.Email,
 		Password:    string(hashedPassword),
-		CreatedAt:   input.CreatedAt,
-		UpdatedAt:   input.UpdatedAt,
-		DeletedAt:   input.DeletedAt,
 	}
 
 	// Save to database
@@ -208,6 +205,7 @@ func SignIn(c *gin.Context) {
 func RegisterTalent(c *gin.Context) {
 	// Parse incoming JSON data into a struct
 	var talent struct {
+		UserID          string   `json:"user_id" binding:"required"`
 		TalentName      string   `json:"talent_name" binding:"required"`
 		Category        string   `json:"category" binding:"required"`
 		Bio             string   `json:"bio" binding:"required"`
@@ -233,8 +231,16 @@ func RegisterTalent(c *gin.Context) {
 		return
 	}
 
+	//Generate a unique user ID using UUID
+	uniquetalentid, err := uuid.New()
+	if err != nil {
+		fmt.Println("Error generating UUID:", err)
+		return
+	}
 	// Create TalentRegistration object for saving to DB
 	talentRecord := models.TalentRegistration{
+		UserID:          talent.UserID,
+		TalentID:        uniquetalentid.String(),
 		TalentName:      talent.TalentName,
 		Category:        talent.Category,
 		Bio:             talent.Bio,
@@ -254,6 +260,40 @@ func RegisterTalent(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Talent registered successfully!",
 		"skills":  skillsString,
+	})
+}
+
+func GetTalentAccounts(c *gin.Context) {
+	userID := c.Query("user_id") // Get the user ID from the request parameters
+
+	var talents []models.TalentRegistration // Slice to store the talents associated with the user
+
+	// Query the database for all talent accounts associated with the user ID
+	if err := config.DB.Where("user_id = ?", userID).Find(&talents).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch talents"})
+		return
+	}
+
+	// Check if no talents exist for the user
+	if len(talents) == 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "No talents created yet"})
+		return
+	}
+
+	// Prepare the response data
+	talentData := make([]map[string]string, len(talents))
+	for i, talent := range talents {
+		talentData[i] = map[string]string{
+			"talent_id":   talent.TalentID,
+			"talent_name": talent.TalentName,
+		}
+	}
+
+	// Success response with the list of TalentIDs and TalentNames
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Talent accounts fetched successfully",
+		"user_id":     userID,
+		"talent_data": talentData,
 	})
 }
 

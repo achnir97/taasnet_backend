@@ -27,8 +27,13 @@ func SetupRoutes() *gin.Engine {
 
 	router.POST("/api/register", handlers.RegisterUser)
 	router.POST("/api/signin", handlers.SignIn)
+	router.POST("/api/register-talent", handlers.RegisterTalent)
+	router.GET("/api/get-talents", handlers.GetTalentAccounts)
+
 	// Card routes
 	router.POST("/api/cards", handlers.SaveCard)
+	router.POST("/api/generate-cards", handlers.CreateServiceCard)
+	router.GET("/api/get-cards", handlers.GetCardsByTalentID)
 	router.GET("/api/cards/user", handlers.GetUserCards)
 	router.GET("/api/cards/all", handlers.GetAllCards)
 	router.GET("/api/cards/event-id", handlers.Cards_Id)
@@ -39,8 +44,9 @@ func SetupRoutes() *gin.Engine {
 	router.POST("/api/update-video-control", handlers.UpdateVideoControl)
 
 	//Booking routes
-	router.POST("/api/bookings", handlers.BookCard)
-	router.GET("/api/mybookings", handlers.RetrieveMyBookedCards)
+	router.GET("/api/bookings/user/:user_id", handlers.GetBookingsByUser)
+	router.GET("/api/bookings/talent/:talent_id", handlers.GetBookingsByTalent)
+	router.POST("/api/book-cards", handlers.CreateBookings)
 
 	router.GET("/api/bookingRequest", handlers.RetrieveMyBookedCardsRequestToTalent)
 	router.PATCH("/api/handle-bookingStatus", handlers.HandleUpdateBookingStatus)
@@ -53,10 +59,8 @@ func SetupRoutes() *gin.Engine {
 
 	//Schedule management routes
 	router.POST("/api/create-schedule", handlers.CreateAvailableSlots)
-	router.PATCH("/api/update-schedule", handlers.UpdateAvailableSlots)
-	router.GET("/api/get-all-schedule", handlers.GetAvailableSlots)
-	router.DELETE("/api/delete-schedule", handlers.DeleteAvailableSlot)
-
+	router.GET("/api/get-all-schedule", handlers.GetTalentAvailability)
+	// router.PATCH("/api/update-schedule", handlers.UpdateAvailableSlots)
+	// router.DELETE("/api/delete-schedule", handlers.DeleteAvailableSlot)
 	return router
-
 }

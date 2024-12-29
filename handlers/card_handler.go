@@ -14,7 +14,6 @@ import (
 
 func CreateCard(c *gin.Context) {
 	var input models.Card
-
 	// Parse the request body
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -28,6 +27,90 @@ func CreateCard(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Card created successfully", "card": input})
+}
+
+// CreateCard handles the creation of a new ServiceCard
+func CreateServiceCard(c *gin.Context) {
+
+	var card struct {
+		// Primary Key
+		TalentID        string `gorm:"not null" json:"talent_id"`                  // Foreign Key: Links to Talent table
+		CardTitle       string `gorm:"not null" json:"card_title"`                 // Title of the service
+		CardDescription string `gorm:"type:text;not null" json:"card_description"` // Detailed description
+		Suit            string `gorm:"not null" json:"suit"`                       // Enum: "Heart", "Spade", "Diamond", "Clover"
+		Price           int    `    gorm:"not null" json:"price"`                  // Price for the service
+		Duration        int    `gorm:"not null" json:"duration"`                   // Duration in minutes
+		Tags            string `gorm:"not null" json:"tags"`                       // Comma-separated tags
+	}
+
+	// Parse the request body into the input struct
+	if err := c.ShouldBindJSON(&card); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	fmt.Println("inputs", card)
+	//Generate a unique user ID using UUID
+	CardId, err := uuid.New()
+	if err != nil {
+		fmt.Println("Error generating UUID:", err)
+		return
+	}
+
+	cards := models.ServiceCard{
+		CardID:          CardId.String(),
+		TalentID:        card.TalentID,
+		CardTitle:       card.CardTitle,
+		CardDescription: card.CardDescription,
+		Suit:            card.Suit,
+		Price:           card.Price,
+		Duration:        card.Duration,
+		Tags:            card.Tags,
+	}
+
+	// Save the card to the database
+	if err := config.DB.Create(&cards).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create card"})
+		return
+	}
+
+	// Respond with success
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Card created successfully",
+		"card":    card,
+	})
+}
+
+func GetCardsByTalentID(c *gin.Context) {
+	// Get the talent_id from the query parameter
+	talentID := c.Query("talent_id")
+
+	// Check if talent_id is provided
+	if talentID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "talent_id is required"})
+		return
+	}
+
+	// Define a slice to hold the cards
+	var cards []models.ServiceCard
+
+	// Query the database for cards with the given talent_id
+	if err := config.DB.Where("talent_id = ?", talentID).Find(&cards).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch cards"})
+		return
+	}
+
+	// Check if no cards are found
+	if len(cards) == 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "No cards found for the given talent_id"})
+		return
+	}
+
+	// Respond with the fetched cards
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Cards fetched successfully",
+		"cards":   cards,
+	})
 }
 
 // / SaveCard handles the saving of card details
