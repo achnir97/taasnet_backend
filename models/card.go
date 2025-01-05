@@ -149,17 +149,7 @@ type VideoControl struct {
 	UpdatedAt  time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }
 
-type AvailableTimeSlots struct {
-	ID             uint           `gorm:"primaryKey" json:"id"`
-	TalentID       string         `json:"talent_id" binding:"required"`
-	AvailableDate  time.Time      `json:"available_date" binding:"required"`
-	AvailableSlots string         `json:"available_slots" binding:"required"`
-	CreatedAt      time.Time      `json:"created_at"`
-	UpdatedAt      time.Time      `json:"updated_at"`
-	DeletedAt      gorm.DeletedAt `gorm:"index" json:"deleted_at"`
-}
-
-type BookingRequest struct {
+type BookingRequest1 struct {
 	BookingID       string         `json:"booking_id" binding:"required"`
 	CardID          string         `json:"card_id" binding:"required"`
 	CardTitle       string         `json:"card_title" binding:"required"`
@@ -174,4 +164,16 @@ type BookingRequest struct {
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
 	DeletedAt       gorm.DeletedAt `gorm:"index" json:"deleted_at"`
+}
+
+type BookingRequest struct {
+	ID          uint           `gorm:"primaryKey" json:"id"`
+	TalentID    string         `json:"talent_id" binding:"required"`
+	UserID      string         `json:"user_id" binding:"required"`
+	StartTime   time.Time      `json:"start_time" binding:"required"`
+	EndTime     time.Time      `json:"end_time" binding:"required"`
+	BookingDate time.Time      `json:"booking_date" binding:"required"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at"`
 }

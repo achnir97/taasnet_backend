@@ -33,8 +33,15 @@ func SetupRoutes() *gin.Engine {
 	// Card routes
 	router.POST("/api/cards", handlers.SaveCard)
 	router.POST("/api/generate-cards", handlers.CreateServiceCard)
+
 	router.GET("/api/get-cards", handlers.GetCardsByTalentID)
 	router.GET("/api/cards/user", handlers.GetUserCards)
+
+	//Card routes for editiong and deleting
+	router.PATCH("api/cards/edit-card/:cardId", handlers.EditCard)
+	router.DELETE("api/cards/delete-card/:cardId", handlers.DeleteCard)
+
+	// Card routes for getting all the cards
 	router.GET("/api/cards/all", handlers.GetAllCards)
 	router.GET("/api/cards/event-id", handlers.Cards_Id)
 
@@ -59,7 +66,10 @@ func SetupRoutes() *gin.Engine {
 
 	//Schedule management routes
 	router.POST("/api/create-schedule", handlers.CreateAvailableSlots)
-	router.GET("/api/get-all-schedule", handlers.GetTalentAvailability)
+	router.GET("/api/get-all-raw-schedule", handlers.FetchrawAllAvailableTimeSlots)
+	//router.GET("/api/get-all-filtered_schedule", handlers.FetchFilteredAvailableTimeSlots)
+	router.GET("/api/get-all-filtered_schedule", handlers.FetchBookFilteredAvailableTimeSlots)
+
 	// router.PATCH("/api/update-schedule", handlers.UpdateAvailableSlots)
 	// router.DELETE("/api/delete-schedule", handlers.DeleteAvailableSlot)
 	return router

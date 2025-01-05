@@ -39,7 +39,7 @@ func ConnectDB() {
 	}
 
 	// Migrate the schema
-	err = db.AutoMigrate(&models.User{}, &models.Card{}, &models.Booking{}, &models.VideoControl{}, &models.Users_ref{}, &models.TalentRegistration{}, &models.ServiceCard{}, &models.AvailableTimeSlots{}, &models.BookingRequest{})
+	err = db.AutoMigrate(&models.User{}, &models.Card{}, &models.Booking{}, &models.VideoControl{}, &models.Users_ref{}, &models.TalentRegistration{}, &models.ServiceCard{}, &models.AvailableTimeSlots{}, &models.BookingRequests{})
 	if err != nil {
 		log.Fatal("Failed to migrate database schema:", err)
 	}
